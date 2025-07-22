@@ -97,7 +97,7 @@ class Game {
 
     startEnemyMovement() {
         this.enemyMoveInterval = setInterval(() => {
-            sasthis.moveEnemies();
+            this.moveEnemies();
         }, this.enemyMoveDelay);
     }
 
