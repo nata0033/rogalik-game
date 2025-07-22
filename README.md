@@ -14,4 +14,4 @@
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/ваш-username/rogalik-game.git
+git clone https://github.com/nata0033/rogalik-game
