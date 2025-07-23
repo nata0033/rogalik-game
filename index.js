@@ -2,8 +2,34 @@ class Game {
     constructor() {
         this.WIDTH = 40;
         this.HEIGHT = 24;
+        this.TILESIZE = 25;
 
-        this.map;
+        this.DIRECTIONS = [
+            { dx: 0, dy: -1 }, // вверх
+            { dx: 0, dy: 1 },  // вниз
+            { dx: -1, dy: 0 }, // влево
+            { dx: 1, dy: 0 }   // вправо
+        ];
+
+        //здоровье
+        this.MAXENEMYHEALTH = 3;
+        this.MAXHEROHEALTH = 3;
+
+        //сила атаки
+        this.MINHEROATTACKPOWER = 1;
+        this.ENEMIESATTACKPOWER = 1
+
+        //количество предметов
+        this.POTIONSCOUNT = 10
+        this.ENEMIESCOUNT = 10
+        this.SWORDSCOUNT = 2
+
+        //сила действия ,fajd
+        this.INCREASEATTACKPOWER = 1
+        this.INCREASEHEALTH = 1
+
+        this.enemyMoveInterval = null;
+        this.enemyMoveDelay = 500;
 
         // 0 - стена
         // 1 - пол
@@ -12,26 +38,17 @@ class Game {
         // 4 - герой
         // 5 - противник
 
-        this.enemies = [];
-
-        this.enemyMoveInterval = null;
-        this.enemyMoveDelay = 500;
-
-        this.directions = [
-            { dx: 0, dy: -1 }, // вверх
-            { dx: 0, dy: 1 },  // вниз
-            { dx: -1, dy: 0 }, // влево
-            { dx: 1, dy: 0 }   // вправо
-        ];
+        this.map;
 
         this.state = {
             hero: {
                 x: 0,
                 y: 0,
-                health: 10,
-                attackPower: 1
+                health: this.MAXHEROHEALTH,
+                attackPower: this.MINHEROATTACKPOWER
             },
             score: 0,
+            enemies: []
         };
     }
 
@@ -48,17 +65,17 @@ class Game {
     }
 
     attackHero(x, y) {
-        for (const dir of this.directions) {
+        for (const dir of this.DIRECTIONS) {
             const checkX = x + dir.dx;
             const checkY = y + dir.dy;
 
             if (checkX === this.state.hero.x && checkY === this.state.hero.y) {
-                this.state.hero.health -= 5;
+                this.state.hero.health -= this.ENEMIESATTACKPOWER;
 
                 if (this.state.hero.health <= 0) {
-                    this.state.hero.health = 0;
                     this.gameOver();
                 }
+                this.renderMap();
                 break;
             }
         }
@@ -66,11 +83,11 @@ class Game {
     }
 
     moveEnemies() {
-        for (let i = 0; i < this.enemies.length; i++) {
-            const enemy = this.enemies[i];
+        for (let i = 0; i < this.state.enemies.length; i++) {
+            const enemy = this.state.enemies[i];
             const possibleMoves = [];
 
-            for (const dir of this.directions) {
+            for (const dir of this.DIRECTIONS) {
                 const newX = enemy.x + dir.dx;
                 const newY = enemy.y + dir.dy;
 
@@ -119,10 +136,13 @@ class Game {
         }
 
         if (targetTile === 2) {
-            this.state.hero.attackPower += 1;
+            this.state.hero.attackPower += this.INCREASEATTACKPOWER;
+
+            const powerValueInfo = document.querySelector('.power-value')
+            powerValueInfo.innerHTML = this.state.hero.attackPower + ''
         }
         if (targetTile === 3) {
-            this.state.hero.health += 5
+            this.state.hero.health += this.INCREASEHEALTH
         }
 
         this.map[this.state.hero.y][this.state.hero.x] = 1;
@@ -134,8 +154,8 @@ class Game {
     }
 
     findEnemy(x, y) {
-        for (let i = 0; i < this.enemies.length; i++) {
-            if (this.enemies[i].x === x && this.enemies[i].y === y) {
+        for (let i = 0; i < this.state.enemies.length; i++) {
+            if (this.state.enemies[i].x === x && this.state.enemies[i].y === y) {
                 return i
             }
         }
@@ -144,31 +164,35 @@ class Game {
 
     removeEnemy(x, y) {
         const enemyIndex = this.findEnemy(x, y);
-        this.enemies.splice(enemyIndex, 1);
+        this.state.enemies.splice(enemyIndex, 1);
     }
 
     attack() {
-        //const heroTile = document.querySelector('.tileP')
-        //heroTile.style.backgroundImage = 'url(./images/tile-PA.png)'
-
-        this.directions.forEach(dir => {
+        this.DIRECTIONS.forEach(dir => {
             const targetX = this.state.hero.x + dir.dx;
             const targetY = this.state.hero.y + dir.dy;
 
-            if (this.map[targetY][targetX] === 5) {
-                this.map[targetY][targetX] = 1;
-                this.removeEnemy(targetX, targetY);
-                this.state.score += 1;
+            const targetEnemyIndex = this.findEnemy(targetX, targetY);
+
+            if (targetEnemyIndex !== -1) {
+                let enemy = this.state.enemies[targetEnemyIndex]
+                if (enemy.health - this.state.hero.attackPower <= 0) {
+                    this.map[targetY][targetX] = 1;
+                    this.removeEnemy(targetX, targetY);
+                    this.state.score += 1;
+
+                    const scoreValueInfo = document.querySelector('.score-value')
+                    scoreValueInfo.innerHTML = this.state.score + ''
+                }
+                else {
+                    enemy.health -= this.state.hero.attackPower
+                }
                 this.renderMap()
             }
         });
 
-        //setTimeout(() => {
-        //    heroTile.style.backgroundImage = 'url(./images/tile-P.png)';
-        //}, 500);
-
-        if (this.score.enemies == 0)
-            this.generateEnemies();
+        if (this.state.enemies.length === 0)
+            this.init();
     }
 
     initEventHandlers() {
@@ -273,8 +297,7 @@ class Game {
     }
 
     generateSwords() {
-        const count = 2;
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < this.SWORDSCOUNT; i++) {
             const position = this.getRandomEmptyTile();
             if (position) {
                 this.map[position.y][position.x] = 2;
@@ -283,8 +306,7 @@ class Game {
     }
 
     generatePotions() {
-        const count = 10;
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < this.POTIONSCOUNT; i++) {
             const position = this.getRandomEmptyTile();
             if (position) {
                 this.map[position.y][position.x] = 3;
@@ -302,12 +324,11 @@ class Game {
     }
 
     generateEnemies() {
-        const count = 10;
-        for (let i = 0; i < count; i++) {
+        for (let i = this.state.enemies.length; i < this.ENEMIESCOUNT; i++) {
             const position = this.getRandomEmptyTile();
             if (position) {
                 this.map[position.y][position.x] = 5;
-                this.enemies.push({ x: position.x, y: position.y });
+                this.state.enemies.push({ x: position.x, y: position.y, health: this.MAXENEMYHEALTH });
             }
         }
     }
@@ -326,20 +347,17 @@ class Game {
         const field = document.querySelector('.field');
         field.innerHTML = '';
 
-        const tileSize = 25;
-
         for (let y = 0; y < this.HEIGHT; y++) {
             for (let x = 0; x < this.WIDTH; x++) {
                 const tileValue = this.map[y][x];
                 const tile = document.createElement('div');
                 tile.classList.add('tile')
 
-                tile.style.top = y * tileSize + 'px'
-                tile.style.left = x * tileSize + 'px'
+                tile.style.top = y * this.TILESIZE + 'px'
+                tile.style.left = x * this.TILESIZE + 'px'
 
                 const health = document.createElement('div');
                 health.classList.add('health')
-                health.width = 25 + 'px'
 
                 switch (tileValue) {
                     case 0:
@@ -355,10 +373,14 @@ class Game {
                         break;
                     case 4:
                         tile.classList.add('tileP');
+                        health.style.width = (this.state.hero.health / this.MAXHEROHEALTH) * 100 + '%'
                         tile.appendChild(health);
                         break;
                     case 5:
                         tile.classList.add('tileE');
+                        const enemy = this.state.enemies[this.findEnemy(x, y)]
+
+                        health.style.width = (enemy.health / this.MAXENEMYHEALTH) * 100 + '%'
                         tile.appendChild(health);
                         break;
                 }
